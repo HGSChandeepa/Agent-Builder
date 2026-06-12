@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { ReactFlowProvider } from "@xyflow/react";
+import type { Run } from "@/src/core/execution/types";
 import { WorkflowCanvas } from "@/src/features/workflow-builder/workflow_canvas";
 import { RunInspector } from "@/src/features/run-inspector/run_inspector";
 import { BuilderNavSidebar } from "@/src/features/workflow-builder/builder_nav_sidebar";
@@ -26,6 +27,7 @@ interface AgentBuilderAppProps {
 export function AgentBuilderApp({ workflowId }: AgentBuilderAppProps) {
   const workflow = useBuilderStore((state) => state.workflow);
   const activeRun = useBuilderStore((state) => state.activeRun);
+  const runs = useBuilderStore((state) => state.runs);
   const isSimulation = useBuilderStore((state) => state.isSimulation);
   const validationIssues = useBuilderStore((state) => state.validationIssues);
   const setWorkflow = useBuilderStore((state) => state.setWorkflow);
@@ -118,6 +120,17 @@ export function AgentBuilderApp({ workflowId }: AgentBuilderAppProps) {
   const handleReplay = useCallback(async (): Promise<void> => {
     await handleRun();
   }, [handleRun]);
+  const handleRunUpdated = useCallback(
+    (run: Run): void => {
+      setActiveRun(run);
+      const hasRun = runs.some((existingRun) => existingRun.id === run.id);
+      const nextRuns = hasRun
+        ? runs.map((existingRun) => (existingRun.id === run.id ? run : existingRun))
+        : [run, ...runs];
+      setRuns(nextRuns);
+    },
+    [runs, setActiveRun, setRuns],
+  );
   if (loadError) {
     return (
       <div className="flex h-screen flex-col items-center justify-center gap-4 bg-background px-6 text-center">
@@ -167,7 +180,13 @@ export function AgentBuilderApp({ workflowId }: AgentBuilderAppProps) {
           </div>
         ) : (
           <div className="min-w-0 flex-1 border-l border-border bg-background">
-            <RunInspector run={activeRun} onRunUpdated={setActiveRun} onReplay={handleReplay} />
+            <RunInspector
+              run={activeRun}
+              runs={runs}
+              onRunUpdated={handleRunUpdated}
+              onRunSelected={setActiveRun}
+              onReplay={handleReplay}
+            />
           </div>
         )}
       </div>

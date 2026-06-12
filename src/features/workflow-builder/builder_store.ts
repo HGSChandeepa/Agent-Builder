@@ -64,7 +64,12 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
   validationIssues: [],
   setWorkflow: (workflow) => set({ workflow }),
   setPlugins: (plugins) => set({ plugins }),
-  setSelectedNodeId: (nodeId) => set({ selectedNodeId: nodeId }),
+  setSelectedNodeId: (nodeId) => {
+    if (get().selectedNodeId === nodeId) {
+      return;
+    }
+    set({ selectedNodeId: nodeId });
+  },
   setActiveRun: (run) => set({ activeRun: run }),
   setRuns: (runs) => set({ runs }),
   setIsSimulation: (value) => set({ isSimulation: value }),

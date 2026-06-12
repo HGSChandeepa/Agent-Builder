@@ -94,6 +94,45 @@ function getEdgeSyncKey(workflow: WorkflowDefinition | null): string {
     .join("|");
 }
 
+function areFlowNodesEqual(firstNodes: readonly Node[], secondNodes: readonly Node[]): boolean {
+  if (firstNodes.length !== secondNodes.length) {
+    return false;
+  }
+  return firstNodes.every((firstNode, index) => {
+    const secondNode = secondNodes[index];
+    return (
+      secondNode !== undefined &&
+      firstNode.id === secondNode.id &&
+      firstNode.type === secondNode.type &&
+      firstNode.position.x === secondNode.position.x &&
+      firstNode.position.y === secondNode.position.y &&
+      firstNode.selected === secondNode.selected &&
+      firstNode.data.label === secondNode.data.label &&
+      firstNode.data.nodeType === secondNode.data.nodeType &&
+      firstNode.data.color === secondNode.data.color &&
+      firstNode.data.category === secondNode.data.category &&
+      firstNode.data.isMutating === secondNode.data.isMutating
+    );
+  });
+}
+
+function areFlowEdgesEqual(firstEdges: readonly Edge[], secondEdges: readonly Edge[]): boolean {
+  if (firstEdges.length !== secondEdges.length) {
+    return false;
+  }
+  return firstEdges.every((firstEdge, index) => {
+    const secondEdge = secondEdges[index];
+    return (
+      secondEdge !== undefined &&
+      firstEdge.id === secondEdge.id &&
+      firstEdge.source === secondEdge.source &&
+      firstEdge.target === secondEdge.target &&
+      firstEdge.sourceHandle === secondEdge.sourceHandle &&
+      firstEdge.targetHandle === secondEdge.targetHandle
+    );
+  });
+}
+
 export function WorkflowCanvas() {
   const workflow = useBuilderStore((state) => state.workflow);
   const plugins = useBuilderStore((state) => state.plugins);
@@ -111,21 +150,24 @@ export function WorkflowCanvas() {
       return;
     }
     const currentSelectedId = useBuilderStore.getState().selectedNodeId;
-    setNodes(buildFlowNodes(workflow, plugins, currentSelectedId));
+    const nextNodes = buildFlowNodes(workflow, plugins, currentSelectedId);
+    setNodes((currentNodes) => (areFlowNodesEqual(currentNodes, nextNodes) ? currentNodes : nextNodes));
   }, [nodeSyncKey, plugins, workflow, setNodes]);
   useEffect(() => {
     if (!workflow) {
       return;
     }
-    setEdges(toFlowEdges(workflow.edges));
+    const nextEdges = toFlowEdges(workflow.edges);
+    setEdges((currentEdges) => (areFlowEdgesEqual(currentEdges, nextEdges) ? currentEdges : nextEdges));
   }, [edgeSyncKey, workflow, setEdges]);
   useEffect(() => {
-    setNodes((currentNodes) =>
-      currentNodes.map((node) => ({
+    setNodes((currentNodes) => {
+      const nextNodes = currentNodes.map((node) => ({
         ...node,
         selected: node.id === selectedNodeId,
-      })),
-    );
+      }));
+      return areFlowNodesEqual(currentNodes, nextNodes) ? currentNodes : nextNodes;
+    });
   }, [selectedNodeId, setNodes]);
   const onInit = useCallback((instance: ReactFlowInstance) => {
     void instance.fitView({ padding: 0.2 });
@@ -199,7 +241,11 @@ export function WorkflowCanvas() {
   );
   const onSelectionChange = useCallback(
     ({ nodes: selectedNodes }: { nodes: Node[] }) => {
-      setSelectedNodeId(selectedNodes[0]?.id ?? null);
+      const nextSelectedNodeId = selectedNodes[0]?.id ?? null;
+      if (useBuilderStore.getState().selectedNodeId === nextSelectedNodeId) {
+        return;
+      }
+      setSelectedNodeId(nextSelectedNodeId);
     },
     [setSelectedNodeId],
   );
@@ -256,7 +302,7 @@ export function WorkflowCanvas() {
         proOptions={{ hideAttribution: true }}
       >
         <Background gap={20} size={1.25} variant={BackgroundVariant.Dots} />
-        <Controls showInteractive={false} position="bottom-left" className="!bottom-16" />
+        <Controls showInteractive={false} position="bottom-left" className="bottom-16!" />
       </ReactFlow>
     </div>
   );

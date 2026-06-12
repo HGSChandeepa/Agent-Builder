@@ -39,8 +39,33 @@ const STATUS_LABELS: Record<string, string> = {
 
 interface RunInspectorProps {
   readonly run: Run | null;
+  readonly runs: readonly Run[];
   readonly onRunUpdated: (run: Run) => void;
+  readonly onRunSelected: (run: Run) => void;
   readonly onReplay: () => void;
+}
+
+function getRunStartedLabel(run: Run): string {
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(run.startedAt));
+}
+
+function getRunDurationLabel(run: Run): string {
+  if (!run.completedAt) {
+    return "In progress";
+  }
+  const durationMs = new Date(run.completedAt).getTime() - new Date(run.startedAt).getTime();
+  return `${Math.max(durationMs, 0)}ms`;
+}
+
+function getSortedRuns(runs: readonly Run[]): readonly Run[] {
+  return [...runs].sort((firstRun, secondRun) => {
+    return new Date(secondRun.startedAt).getTime() - new Date(firstRun.startedAt).getTime();
+  });
 }
 
 function StepTimeline({ steps }: { readonly steps: readonly StepRun[] }) {
@@ -95,8 +120,9 @@ function StepTimeline({ steps }: { readonly steps: readonly StepRun[] }) {
   );
 }
 
-export function RunInspector({ run, onRunUpdated, onReplay }: RunInspectorProps) {
+export function RunInspector({ run, runs, onRunUpdated, onRunSelected, onReplay }: RunInspectorProps) {
   const [isApproving, setIsApproving] = useState<boolean>(false);
+  const sortedRuns = getSortedRuns(runs);
   async function handleApproval(approvalId: string, approved: boolean): Promise<void> {
     if (!run) {
       return;
@@ -122,61 +148,102 @@ export function RunInspector({ run, onRunUpdated, onReplay }: RunInspectorProps)
   }
   const pendingApprovals = run.approvalRequests.filter((a) => a.status === "pending");
   return (
-    <div className="flex h-full flex-col">
-      <PanelHeader
-        title="Last run"
-        subtitle={`${run.id.slice(0, 8)}…`}
-        action={
-          <div className="flex items-center gap-1.5">
-            {run.isSimulation && <StatusBadge variant="info">Simulated</StatusBadge>}
-            <StatusBadge variant={STATUS_VARIANT[run.status] ?? "default"}>
-              {STATUS_LABELS[run.status] ?? run.status}
-            </StatusBadge>
-            <Button variant="ghost" size="sm" onClick={onReplay}>
-              Replay
-            </Button>
-          </div>
-        }
-      />
-      <div className="flex-1 space-y-4 overflow-y-auto p-4">
-        {pendingApprovals.length > 0 && (
-          <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
-            <p className="text-xs font-medium text-amber-700 dark:text-amber-300">Approval required</p>
-            {pendingApprovals.map((approval) => (
-              <div key={approval.id} className="mt-2">
-                <p className="text-xs text-muted-foreground">{approval.action}</p>
-                <div className="mt-2 flex gap-2">
-                  <Button size="sm" disabled={isApproving} onClick={() => handleApproval(approval.id, true)}>
-                    Approve
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    disabled={isApproving}
-                    onClick={() => handleApproval(approval.id, false)}
-                  >
-                    Reject
-                  </Button>
+    <div className="flex h-full min-h-0">
+      <aside className="flex w-80 shrink-0 flex-col border-r border-border bg-muted/20">
+        <div className="border-b border-border px-4 py-3">
+          <p className="text-sm font-medium text-foreground">Executions</p>
+          <p className="text-xs text-muted-foreground">Latest run at the top</p>
+        </div>
+        <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3">
+          {sortedRuns.map((historyRun) => {
+            const isSelected = historyRun.id === run.id;
+            return (
+              <button
+                key={historyRun.id}
+                type="button"
+                onClick={() => onRunSelected(historyRun)}
+                className={`w-full rounded-lg border px-3 py-2 text-left transition-colors ${
+                  isSelected
+                    ? "border-primary bg-background shadow-sm"
+                    : "border-border bg-background/60 hover:border-primary/40 hover:bg-background"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate text-xs font-medium text-foreground">
+                    Run {historyRun.id.slice(0, 8)}
+                  </span>
+                  <StatusBadge variant={STATUS_VARIANT[historyRun.status] ?? "default"}>
+                    {STATUS_LABELS[historyRun.status] ?? historyRun.status}
+                  </StatusBadge>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
-        {run.error && (
-          <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">{run.error}</p>
-        )}
-        <section>
-          <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Steps</h3>
-          <StepTimeline steps={run.stepRuns} />
-        </section>
-        {Object.keys(run.output).length > 0 && (
+                <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-muted-foreground">
+                  <span>{getRunStartedLabel(historyRun)}</span>
+                  <span>{getRunDurationLabel(historyRun)}</span>
+                </div>
+                {historyRun.isSimulation && (
+                  <p className="mt-1 text-[10px] text-blue-700 dark:text-blue-400">Simulation</p>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </aside>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <PanelHeader
+          title="Selected run"
+          subtitle={`${run.id.slice(0, 8)}…`}
+          action={
+            <div className="flex items-center gap-1.5">
+              {run.isSimulation && <StatusBadge variant="info">Simulated</StatusBadge>}
+              <StatusBadge variant={STATUS_VARIANT[run.status] ?? "default"}>
+                {STATUS_LABELS[run.status] ?? run.status}
+              </StatusBadge>
+              <Button variant="ghost" size="sm" onClick={onReplay}>
+                Replay
+              </Button>
+            </div>
+          }
+        />
+        <div className="flex-1 space-y-4 overflow-y-auto p-4">
+          {pendingApprovals.length > 0 && (
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-3">
+              <p className="text-xs font-medium text-amber-700 dark:text-amber-300">Approval required</p>
+              {pendingApprovals.map((approval) => (
+                <div key={approval.id} className="mt-2">
+                  <p className="text-xs text-muted-foreground">{approval.action}</p>
+                  <div className="mt-2 flex gap-2">
+                    <Button size="sm" disabled={isApproving} onClick={() => handleApproval(approval.id, true)}>
+                      Approve
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      disabled={isApproving}
+                      onClick={() => handleApproval(approval.id, false)}
+                    >
+                      Reject
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {run.error && (
+            <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">{run.error}</p>
+          )}
           <section>
-            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Result</h3>
-            <pre className="max-h-40 overflow-auto rounded-lg border bg-muted/30 p-3 font-mono text-[10px] leading-relaxed text-muted-foreground">
-              {JSON.stringify(run.output, null, 2)}
-            </pre>
+            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Steps</h3>
+            <StepTimeline steps={run.stepRuns} />
           </section>
-        )}
+          {Object.keys(run.output).length > 0 && (
+            <section>
+              <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Result</h3>
+              <pre className="max-h-40 overflow-auto rounded-lg border bg-muted/30 p-3 font-mono text-[10px] leading-relaxed text-muted-foreground">
+                {JSON.stringify(run.output, null, 2)}
+              </pre>
+            </section>
+          )}
+        </div>
       </div>
     </div>
   );
