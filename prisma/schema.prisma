@@ -1,0 +1,68 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum AgentEnvironment {
+  development
+  staging
+  production
+}
+
+enum AgentStatus {
+  draft
+  published
+  archived
+}
+
+/// Core agent record created from the Agent Hub. Workflow graph data is stored
+/// as JSON for flexibility; it can be normalized into separate tables later.
+model Agent {
+  id          String           @id @default(uuid()) @db.Uuid
+  name        String           @db.VarChar(255)
+  description String           @default("") @db.Text
+  environment AgentEnvironment @default(development)
+  status      AgentStatus      @default(draft)
+  version     Int              @default(1)
+  nodes       Json             @default("[]")
+  edges       Json             @default("[]")
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+  runs        WorkflowRun[]
+
+  @@index([environment])
+  @@index([status])
+  @@index([updatedAt(sort: Desc)])
+  @@map("agents")
+}
+
+/// Complete workflow execution snapshots. Nested step runs, metrics, traces,
+/// and approval requests are stored as JSON to preserve the runtime shape.
+model WorkflowRun {
+  id               String    @id @default(uuid()) @db.Uuid
+  workflowId       String    @map("workflow_id") @db.Uuid
+  workflowVersion  Int       @map("workflow_version")
+  status           String    @db.VarChar(32)
+  triggerType      String    @map("trigger_type") @db.VarChar(128)
+  isSimulation     Boolean   @default(false) @map("is_simulation")
+  input            Json      @default("{}")
+  output           Json      @default("{}")
+  stepRuns         Json      @default("[]") @map("step_runs")
+  metrics          Json      @default("[]")
+  traces           Json      @default("[]")
+  approvalRequests Json      @default("[]") @map("approval_requests")
+  error            String?   @db.Text
+  startedAt        DateTime  @map("started_at")
+  completedAt      DateTime? @map("completed_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+  workflow         Agent     @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId, startedAt(sort: Desc)])
+  @@index([status])
+  @@map("workflow_runs")
+}
