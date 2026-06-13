@@ -14,7 +14,10 @@ export type AuditAction =
   | "policy.violation"
   | "integration.oauth.started"
   | "integration.oauth.completed"
-  | "integration.disconnected";
+  | "integration.disconnected"
+  | "trigger.created"
+  | "trigger.updated"
+  | "trigger.deleted";
 
 export interface AuditEntry {
   readonly id: string;

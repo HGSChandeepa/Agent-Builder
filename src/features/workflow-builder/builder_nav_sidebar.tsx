@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LayoutGrid, Plug, Workflow } from "lucide-react";
+import { Clock, LayoutGrid, Plug, Workflow } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -34,6 +34,19 @@ export function BuilderNavSidebar({ workflowName }: BuilderNavSidebarProps) {
           <Plug />
         </Button>
         <span className="max-w-12 truncate text-[9px] text-muted-foreground">Integrate</span>
+      </div>
+      <div className="mt-4 flex flex-col items-center gap-1">
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          nativeButton={false}
+          render={<Link href="/triggers" />}
+          title="Triggers"
+          className="text-muted-foreground hover:text-foreground"
+        >
+          <Clock />
+        </Button>
+        <span className="max-w-12 truncate text-[9px] text-muted-foreground">Triggers</span>
       </div>
       <div className="mt-4 flex flex-col items-center gap-1">
         <Button

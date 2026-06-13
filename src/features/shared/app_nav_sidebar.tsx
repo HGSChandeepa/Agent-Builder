@@ -1,11 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { LayoutGrid, Plug, Workflow } from "lucide-react";
+import { Clock, LayoutGrid, Plug, Workflow } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export type AppNavSection = "agents" | "integrations" | "editor";
+export type AppNavSection = "agents" | "integrations" | "triggers" | "editor";
 
 interface AppNavSidebarProps {
   readonly activeSection: AppNavSection;
@@ -43,6 +43,23 @@ export function AppNavSidebar({ activeSection, workflowName }: AppNavSidebarProp
           <Plug />
         </Button>
         <span className="max-w-12 truncate text-[9px] text-muted-foreground">Integrate</span>
+      </div>
+      <div className="mt-4 flex flex-col items-center gap-1">
+        <Button
+          variant={activeSection === "triggers" ? "secondary" : "ghost"}
+          size="icon-sm"
+          nativeButton={false}
+          render={<Link href="/triggers" />}
+          title="Triggers"
+          className={cn(
+            activeSection === "triggers"
+              ? "bg-primary/10 text-primary"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          <Clock />
+        </Button>
+        <span className="max-w-12 truncate text-[9px] text-muted-foreground">Triggers</span>
       </div>
       {activeSection === "editor" && (
         <div className="mt-4 flex flex-col items-center gap-1">
