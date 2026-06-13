@@ -17,6 +17,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       name: body.name ?? "Untitled Workflow",
       description: body.description,
       environment: body.environment,
+      integrations: body.integrations,
     });
     auditTrail.record("workflow.created", "system", "workflow", workflow.id, { name: workflow.name });
     return NextResponse.json({ workflow }, { status: 201 });

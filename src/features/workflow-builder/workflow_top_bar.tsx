@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-export type BuilderViewTab = "editor" | "executions";
+export type BuilderViewTab = "editor" | "executions" | "integrations";
 
 interface WorkflowTopBarProps {
   readonly workflow: WorkflowDefinition;
@@ -69,6 +69,9 @@ export function WorkflowTopBar({
           </TabsTrigger>
           <TabsTrigger value="executions" className="px-4 text-xs">
             Executions
+          </TabsTrigger>
+          <TabsTrigger value="integrations" className="px-4 text-xs">
+            Integrations
           </TabsTrigger>
         </TabsList>
       </Tabs>

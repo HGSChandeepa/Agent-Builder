@@ -1,5 +1,6 @@
 import { nodePluginRegistry } from "@/src/core/nodes/registry";
 import { allNodePlugins } from "@/src/core/nodes/plugins/index";
+import { gmailNodePlugins } from "@/src/core/nodes/plugins/gmail_plugins";
 import { seedDefaultCredentials } from "@/src/security/secrets/vault";
 import { createExecutionEngine } from "@/src/core/execution/engine";
 
@@ -10,6 +11,9 @@ export function bootstrapPlatform(): void {
     return;
   }
   for (const plugin of allNodePlugins) {
+    nodePluginRegistry.register(plugin);
+  }
+  for (const plugin of gmailNodePlugins) {
     nodePluginRegistry.register(plugin);
   }
   seedDefaultCredentials();

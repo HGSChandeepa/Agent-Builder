@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { GmailNodeSection, isGmailNodeType } from "@/src/features/workflow-builder/gmail_node_section";
 
 type StructuredOutputFormat = "text" | "json";
 type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
@@ -173,6 +174,19 @@ function getNodeOutputPathOptions(node: NodeDefinition): readonly { readonly val
         { value: "items", label: "Items" },
         { value: "count", label: "Count" },
         { value: "currentItem", label: "Current item" },
+      ];
+    case "Gmail":
+      return [
+        { value: "emails", label: "Matched emails (monitor)" },
+        { value: "count", label: "Email count (monitor)" },
+        { value: "emails.0.id", label: "First email ID (monitor)" },
+        { value: "emails.0.from", label: "First email sender (monitor)" },
+        { value: "emails.0.subject", label: "First email subject (monitor)" },
+        { value: "id", label: "Message ID (read)" },
+        { value: "from", label: "From (read)" },
+        { value: "subject", label: "Subject (read)" },
+        { value: "bodyText", label: "Body text (read)" },
+        { value: "messageId", label: "Sent message ID (send)" },
       ];
     default:
       return COMMON_INPUT_PATHS;
@@ -623,6 +637,10 @@ export function PropertyPanel() {
     selectedNode.type === "PromptTemplate" && workflow
       ? getPromptInputPathOptions(workflow, selectedNode.id)
       : [];
+  const gmailOutputPathOptions =
+    isGmailNodeType(selectedNode.type) && workflow
+      ? getPromptInputPathOptions(workflow, selectedNode.id)
+      : [];
   function handleConfigChange(key: string, value: unknown): void {
     updateNodeConfig(nodeId, { [key]: value });
   }
@@ -652,6 +670,12 @@ export function PropertyPanel() {
           <PromptTemplateSection
             config={selectedNode.config}
             inputPathOptions={promptInputPathOptions}
+            onConfigChange={handleConfigChange}
+          />
+        ) : isGmailNodeType(selectedNode.type) ? (
+          <GmailNodeSection
+            config={selectedNode.config}
+            outputPathOptions={gmailOutputPathOptions}
             onConfigChange={handleConfigChange}
           />
         ) : (

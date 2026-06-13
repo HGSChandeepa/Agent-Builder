@@ -19,6 +19,7 @@ class WorkflowStore {
       status: "draft",
       nodes: [],
       edges: [],
+      integrations: input.integrations ?? {},
       createdAt: now,
       updatedAt: now,
     };
@@ -47,6 +48,7 @@ class WorkflowStore {
       edges: input.edges ?? existing.edges,
       status: input.status ?? existing.status,
       environment: input.environment ?? existing.environment,
+      integrations: input.integrations ?? existing.integrations,
       version: input.nodes || input.edges ? existing.version + 1 : existing.version,
       updatedAt: new Date().toISOString(),
     };

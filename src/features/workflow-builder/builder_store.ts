@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { v4 as uuidv4 } from "uuid";
-import type { EdgeDefinition, NodeDefinition, WorkflowDefinition } from "@/src/core/workflow/types";
+import type { AgentIntegrationsConfig, EdgeDefinition, NodeDefinition, WorkflowDefinition } from "@/src/core/workflow/types";
 import type { Run } from "@/src/core/execution/types";
 
 export interface NodePluginSummary {
@@ -46,6 +46,7 @@ interface BuilderState {
   addNode: (type: string, position: { x: number; y: number }) => void;
   updateNodeConfig: (nodeId: string, config: Record<string, unknown>) => void;
   updateNodeLabel: (nodeId: string, label: string) => void;
+  updateIntegrations: (integrations: AgentIntegrationsConfig) => void;
   updateNodes: (nodes: NodeDefinition[]) => void;
   updateEdges: (edges: EdgeDefinition[]) => void;
   removeNode: (nodeId: string) => void;
@@ -124,6 +125,13 @@ export const useBuilderStore = create<BuilderState>((set, get) => ({
       },
     });
   },
+  updateIntegrations: (integrations) => {
+    const { workflow } = get();
+    if (!workflow) {
+      return;
+    }
+    set({ workflow: { ...workflow, integrations } });
+  },
   updateNodes: (nodes) => {
     const { workflow } = get();
     if (!workflow) {
@@ -166,6 +174,7 @@ export async function createWorkflow(input: {
   name: string;
   description?: string;
   environment?: WorkflowDefinition["environment"];
+  integrations?: AgentIntegrationsConfig;
 }): Promise<WorkflowDefinition> {
   const response = await fetch("/api/workflows", {
     method: "POST",
@@ -199,6 +208,7 @@ export async function saveWorkflow(workflow: WorkflowDefinition): Promise<{ work
       edges: workflow.edges,
       environment: workflow.environment,
       status: workflow.status,
+      integrations: workflow.integrations,
     }),
   });
   return response.json();

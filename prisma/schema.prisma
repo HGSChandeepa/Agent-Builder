@@ -19,6 +19,23 @@ enum AgentStatus {
   archived
 }
 
+enum IntegrationProvider {
+  gmail
+  outlook
+  slack
+  microsoft_teams
+  google_drive
+  notion
+  hubspot
+}
+
+enum IntegrationConnectionStatus {
+  connected
+  disconnected
+  error
+  token_expired
+}
+
 /// Core agent record created from the Agent Hub. Workflow graph data is stored
 /// as JSON for flexibility; it can be normalized into separate tables later.
 model Agent {
@@ -28,9 +45,10 @@ model Agent {
   environment AgentEnvironment @default(development)
   status      AgentStatus      @default(draft)
   version     Int              @default(1)
-  nodes       Json             @default("[]")
-  edges       Json             @default("[]")
-  createdAt   DateTime         @default(now()) @map("created_at")
+  nodes         Json             @default("[]")
+  edges         Json             @default("[]")
+  integrations  Json             @default("{}") @map("integrations")
+  createdAt     DateTime         @default(now()) @map("created_at")
   updatedAt   DateTime         @updatedAt @map("updated_at")
   runs        WorkflowRun[]
 
@@ -65,4 +83,45 @@ model WorkflowRun {
   @@index([workflowId, startedAt(sort: Desc)])
   @@index([status])
   @@map("workflow_runs")
+}
+
+/// OAuth connections to third-party services (Gmail, Slack, etc.)
+model IntegrationConnection {
+  id              String                      @id @default(uuid()) @db.Uuid
+  provider        IntegrationProvider
+  status          IntegrationConnectionStatus @default(disconnected)
+  accountEmail    String?                     @map("account_email") @db.VarChar(320)
+  accountName     String?                     @map("account_name") @db.VarChar(255)
+  scopes          String[]                    @default([])
+  accessTokenEnc  String?                     @map("access_token_enc") @db.Text
+  refreshTokenEnc String?                     @map("refresh_token_enc") @db.Text
+  tokenExpiresAt  DateTime?                   @map("token_expires_at")
+  lastSyncAt      DateTime?                   @map("last_sync_at")
+  lastError       String?                     @map("last_error") @db.Text
+  metadata        Json                        @default("{}")
+  createdAt       DateTime                    @default(now()) @map("created_at")
+  updatedAt       DateTime                    @updatedAt @map("updated_at")
+  activityLogs    IntegrationActivityLog[]
+
+  @@index([provider])
+  @@index([status])
+  @@index([updatedAt(sort: Desc)])
+  @@map("integration_connections")
+}
+
+/// Audit trail for integration actions (emails processed, sent, failures, auth issues)
+model IntegrationActivityLog {
+  id           String                @id @default(uuid()) @db.Uuid
+  connectionId String                @map("connection_id") @db.Uuid
+  action       String                @db.VarChar(64)
+  status       String                @db.VarChar(32)
+  message      String                @db.Text
+  details      Json                  @default("{}")
+  createdAt    DateTime              @default(now()) @map("created_at")
+  connection   IntegrationConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  @@index([connectionId, createdAt(sort: Desc)])
+  @@index([action])
+  @@index([status])
+  @@map("integration_activity_logs")
 }

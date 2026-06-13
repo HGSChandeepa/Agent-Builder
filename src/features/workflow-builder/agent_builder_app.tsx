@@ -18,6 +18,7 @@ import {
   executeWorkflow,
   fetchRuns,
 } from "@/src/features/workflow-builder/builder_store";
+import { AgentIntegrationsPanel } from "@/src/features/workflow-builder/agent_integrations_panel";
 import { Button } from "@/components/ui/button";
 
 interface AgentBuilderAppProps {
@@ -36,6 +37,7 @@ export function AgentBuilderApp({ workflowId }: AgentBuilderAppProps) {
   const setRuns = useBuilderStore((state) => state.setRuns);
   const setIsSimulation = useBuilderStore((state) => state.setIsSimulation);
   const setValidationIssues = useBuilderStore((state) => state.setValidationIssues);
+  const updateIntegrations = useBuilderStore((state) => state.updateIntegrations);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<BuilderViewTab>("editor");
@@ -178,7 +180,7 @@ export function AgentBuilderApp({ workflowId }: AgentBuilderAppProps) {
             </main>
             <BuilderRightPanel />
           </div>
-        ) : (
+        ) : activeTab === "executions" ? (
           <div className="min-w-0 flex-1 border-l border-border bg-background">
             <RunInspector
               run={activeRun}
@@ -186,6 +188,13 @@ export function AgentBuilderApp({ workflowId }: AgentBuilderAppProps) {
               onRunUpdated={handleRunUpdated}
               onRunSelected={setActiveRun}
               onReplay={handleReplay}
+            />
+          </div>
+        ) : (
+          <div className="min-w-0 flex-1 overflow-y-auto border-l border-border bg-background">
+            <AgentIntegrationsPanel
+              integrations={workflow.integrations ?? {}}
+              onChange={updateIntegrations}
             />
           </div>
         )}

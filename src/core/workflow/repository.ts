@@ -5,6 +5,7 @@ import type {
   Prisma,
 } from "@/generated/prisma/client";
 import type {
+  AgentIntegrationsConfig,
   CreateWorkflowInput,
   EdgeDefinition,
   NodeDefinition,
@@ -44,6 +45,13 @@ function toInputJsonValue<T>(value: readonly T[] | undefined): Prisma.InputJsonV
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
 }
 
+function parseIntegrations(value: PrismaAgent["integrations"]): AgentIntegrationsConfig {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+  return value as AgentIntegrationsConfig;
+}
+
 function toWorkflowDefinition(agent: PrismaAgent): WorkflowDefinition {
   return {
     id: agent.id,
@@ -54,6 +62,7 @@ function toWorkflowDefinition(agent: PrismaAgent): WorkflowDefinition {
     status: toWorkflowStatus(agent.status),
     nodes: parseNodes(agent.nodes),
     edges: parseEdges(agent.edges),
+    integrations: parseIntegrations(agent.integrations),
     createdAt: agent.createdAt.toISOString(),
     updatedAt: agent.updatedAt.toISOString(),
   };
@@ -65,6 +74,7 @@ export async function createAgent(input: CreateWorkflowInput): Promise<WorkflowD
       name: input.name,
       description: input.description ?? "",
       environment: input.environment ?? "development",
+      integrations: (input.integrations ?? {}) as Prisma.InputJsonValue,
     },
   });
   return toWorkflowDefinition(agent);
@@ -100,6 +110,9 @@ export async function updateAgent(
       status: input.status,
       nodes: toInputJsonValue(input.nodes),
       edges: toInputJsonValue(input.edges),
+      integrations: input.integrations
+        ? (input.integrations as Prisma.InputJsonValue)
+        : undefined,
       version: hasGraphChanges ? existing.version + 1 : undefined,
     },
   });

@@ -11,7 +11,10 @@ export type AuditAction =
   | "approval.approved"
   | "approval.rejected"
   | "secret.accessed"
-  | "policy.violation";
+  | "policy.violation"
+  | "integration.oauth.started"
+  | "integration.oauth.completed"
+  | "integration.disconnected";
 
 export interface AuditEntry {
   readonly id: string;

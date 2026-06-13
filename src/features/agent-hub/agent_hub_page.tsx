@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Plus } from "lucide-react";
-import type { WorkflowDefinition } from "@/src/core/workflow/types";
+import type { AgentIntegrationsConfig, WorkflowDefinition } from "@/src/core/workflow/types";
 import { createWorkflow, fetchWorkflows } from "@/src/features/workflow-builder/builder_store";
 import { AgentCard } from "@/src/features/agent-hub/agent_card";
 import { CreateAgentDialog } from "@/src/features/agent-hub/create_agent_dialog";
+import { AppNavSidebar } from "@/src/features/shared/app_nav_sidebar";
 import { Button } from "@/components/ui/button";
 import {
   Empty,
@@ -50,7 +51,12 @@ export function AgentHubPage() {
     [router],
   );
   const handleCreateAgent = useCallback(
-    async (input: { name: string; description: string; environment: WorkflowDefinition["environment"] }): Promise<void> => {
+    async (input: {
+      name: string;
+      description: string;
+      environment: WorkflowDefinition["environment"];
+      integrations?: AgentIntegrationsConfig;
+    }): Promise<void> => {
       setIsCreating(true);
       try {
         const workflow = await createWorkflow(input);
@@ -62,7 +68,9 @@ export function AgentHubPage() {
     [router],
   );
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-surface-base">
+    <div className="flex h-screen overflow-hidden bg-surface-base">
+      <AppNavSidebar activeSection="agents" />
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
       <header className="shrink-0 border-b border-border bg-background/95 px-6 py-4 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -127,6 +135,7 @@ export function AgentHubPage() {
         onCreate={handleCreateAgent}
         isCreating={isCreating}
       />
+      </div>
     </div>
   );
 }

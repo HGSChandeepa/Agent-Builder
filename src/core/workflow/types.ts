@@ -43,8 +43,33 @@ export interface WorkflowDefinition {
   readonly status: WorkflowStatus;
   readonly nodes: readonly NodeDefinition[];
   readonly edges: readonly EdgeDefinition[];
+  readonly integrations: AgentIntegrationsConfig;
   readonly createdAt: string;
   readonly updatedAt: string;
+}
+
+export interface GmailMonitoringRules {
+  readonly senderFilter: string;
+  readonly subjectKeywords: string;
+  readonly labels: string;
+  readonly unreadOnly: boolean;
+  readonly dateFrom: string;
+  readonly dateTo: string;
+  readonly pollIntervalMinutes: number;
+  readonly realtime: boolean;
+}
+
+export interface GmailAgentIntegrationConfig {
+  readonly provider: "gmail";
+  readonly connectionId: string;
+  readonly monitoringRules: GmailMonitoringRules;
+  readonly autoReplyEnabled: boolean;
+  readonly replyTemplate: string;
+  readonly outgoingTemplate: string;
+}
+
+export interface AgentIntegrationsConfig {
+  readonly gmail?: GmailAgentIntegrationConfig;
 }
 
 export interface ValidationIssue {
@@ -63,6 +88,7 @@ export interface CreateWorkflowInput {
   readonly name: string;
   readonly description?: string;
   readonly environment?: WorkflowEnvironment;
+  readonly integrations?: AgentIntegrationsConfig;
 }
 
 export interface UpdateWorkflowInput {
@@ -72,4 +98,5 @@ export interface UpdateWorkflowInput {
   readonly edges?: readonly EdgeDefinition[];
   readonly status?: WorkflowStatus;
   readonly environment?: WorkflowEnvironment;
+  readonly integrations?: AgentIntegrationsConfig;
 }
