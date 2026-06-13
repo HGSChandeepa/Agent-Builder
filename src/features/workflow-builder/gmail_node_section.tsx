@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Braces } from "lucide-react";
 import { fetchIntegrationConnections } from "@/src/features/integrations/integrations_api";
@@ -345,9 +345,21 @@ function MonitorFields({ config, onConfigChange }: GmailNodeSectionProps) {
 export function GmailNodeSection({ config, outputPathOptions, onConfigChange }: GmailNodeSectionProps) {
   const [connections, setConnections] = useState<readonly IntegrationConnectionSummary[]>([]);
   const action = getStringValue(config, "action") || "send";
-  const gmailConnections = connections.filter(
-    (connection) => connection.provider === "gmail" && connection.status === "connected",
+  const connectionId = getStringValue(config, "connectionId");
+  const gmailConnections = useMemo(
+    () =>
+      connections.filter(
+        (connection) => connection.provider === "gmail" && connection.status === "connected",
+      ),
+    [connections],
   );
+  const connectionSelectValue = useMemo(() => {
+    if (gmailConnections.length === 0) {
+      return null;
+    }
+    const matchedConnection = gmailConnections.find((connection) => connection.id === connectionId);
+    return matchedConnection?.id ?? gmailConnections[0].id;
+  }, [connectionId, gmailConnections]);
   useEffect(() => {
     let isActive = true;
     async function loadConnections(): Promise<void> {
@@ -382,10 +394,14 @@ export function GmailNodeSection({ config, outputPathOptions, onConfigChange }: 
       </div>
       <div className="space-y-2">
         <Label htmlFor="gmail-connection">Gmail account</Label>
-        {gmailConnections.length > 0 ? (
+        {connectionSelectValue ? (
           <Select
-            value={getStringValue(config, "connectionId")}
-            onValueChange={(value) => value && onConfigChange("connectionId", value)}
+            value={connectionSelectValue}
+            onValueChange={(value) => {
+              if (value && value !== connectionId) {
+                onConfigChange("connectionId", value);
+              }
+            }}
           >
             <SelectTrigger id="gmail-connection" className="w-full">
               <SelectValue placeholder="Select connected account" />

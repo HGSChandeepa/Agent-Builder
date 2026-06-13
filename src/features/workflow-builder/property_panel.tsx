@@ -70,6 +70,26 @@ function getStructuredOutputFormat(value: unknown): StructuredOutputFormat {
   return value === "json" ? "json" : "text";
 }
 
+function resolveSelectValue(
+  rawValue: unknown,
+  options: readonly { readonly value: string }[] | undefined,
+  fallbackValue?: unknown,
+): string | null {
+  const candidates = [
+    rawValue === undefined || rawValue === null ? "" : String(rawValue),
+    fallbackValue === undefined || fallbackValue === null ? "" : String(fallbackValue),
+  ].filter((value) => value.length > 0);
+  if (!options || options.length === 0) {
+    return candidates[0] ?? null;
+  }
+  for (const candidate of candidates) {
+    if (options.some((option) => option.value === candidate)) {
+      return candidate;
+    }
+  }
+  return options[0]?.value ?? null;
+}
+
 function getStructuredOutputFields(value: unknown): StructuredOutputField[] {
   if (!Array.isArray(value)) {
     return [];
@@ -417,6 +437,7 @@ function PromptTemplateSection({
   const userPromptSource = String(config.userPromptSource ?? "typed");
   const currentInputPath = String(config.userPromptInputPath ?? "");
   const options = ensureCurrentPromptPathOption(inputPathOptions, currentInputPath);
+  const inputPathSelectValue = resolveSelectValue(currentInputPath, options);
   function handlePromptSourceChange(value: string | null): void {
     const nextSource = value === "input" ? "input" : "typed";
     onConfigChange("userPromptSource", nextSource);
@@ -451,10 +472,10 @@ function PromptTemplateSection({
       {userPromptSource === "input" ? (
         <div className="space-y-2">
           <Label htmlFor="prompt-input-path">Input Field Path</Label>
-          {options.length > 0 ? (
+          {options.length > 0 && inputPathSelectValue ? (
             <Select
-              value={currentInputPath || options[0]?.value}
-              onValueChange={(value) => onConfigChange("userPromptInputPath", value ?? "")}
+              value={inputPathSelectValue}
+              onValueChange={(value) => value && onConfigChange("userPromptInputPath", value)}
             >
               <SelectTrigger id="prompt-input-path" className="w-full">
                 <SelectValue />
@@ -686,21 +707,30 @@ export function PropertyPanel() {
                 {field.required && <span className="text-destructive"> *</span>}
               </Label>
               {field.type === "select" ? (
-                <Select
-                  value={String(selectedNode.config[field.key] ?? field.defaultValue ?? "")}
-                  onValueChange={(value) => value && handleConfigChange(field.key, value)}
-                >
-                  <SelectTrigger id={`field-${field.key}`} className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {field.options?.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                (() => {
+                  const selectValue = resolveSelectValue(
+                    selectedNode.config[field.key],
+                    field.options,
+                    field.defaultValue,
+                  );
+                  return selectValue ? (
+                    <Select
+                      value={selectValue}
+                      onValueChange={(value) => value && handleConfigChange(field.key, value)}
+                    >
+                      <SelectTrigger id={`field-${field.key}`} className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {field.options?.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : null;
+                })()
               ) : field.type === "textarea" ? (
                 <Textarea
                   id={`field-${field.key}`}

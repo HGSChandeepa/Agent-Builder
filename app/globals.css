@@ -220,6 +220,15 @@ body {
   stroke: var(--builder-edge);
 }
 
+.builder-workspace .react-flow__edge.selected .react-flow__edge-path {
+  stroke: var(--color-primary);
+  stroke-width: 2.5;
+}
+
+.builder-workspace .react-flow__edge:hover .react-flow__edge-path {
+  stroke: color-mix(in oklab, var(--color-primary) 55%, var(--builder-edge));
+}
+
 .builder-workspace .react-flow__handle {
   border-color: var(--surface-raised) !important;
   box-shadow: 0 0 0 1px var(--border-strong), 0 4px 10px rgb(37 99 235 / 18%) !important;

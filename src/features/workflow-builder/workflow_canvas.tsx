@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, type DragEvent, type MouseEvent } from "react";
 import {
   ReactFlow,
   Background,
@@ -34,6 +34,8 @@ const nodeTypes: NodeTypes = {
 const defaultEdgeOptions = {
   style: { stroke: "var(--builder-edge)", strokeWidth: 2 },
   markerEnd: { type: MarkerType.ArrowClosed, color: "var(--builder-edge)", width: 16, height: 16 },
+  selectable: true,
+  interactionWidth: 24,
 };
 function createFlowEdge(edge: EdgeDefinition): Edge {
   return {
@@ -128,7 +130,8 @@ function areFlowEdgesEqual(firstEdges: readonly Edge[], secondEdges: readonly Ed
       firstEdge.source === secondEdge.source &&
       firstEdge.target === secondEdge.target &&
       firstEdge.sourceHandle === secondEdge.sourceHandle &&
-      firstEdge.targetHandle === secondEdge.targetHandle
+      firstEdge.targetHandle === secondEdge.targetHandle &&
+      firstEdge.selected === secondEdge.selected
     );
   });
 }
@@ -152,7 +155,7 @@ export function WorkflowCanvas() {
     const currentSelectedId = useBuilderStore.getState().selectedNodeId;
     const nextNodes = buildFlowNodes(workflow, plugins, currentSelectedId);
     setNodes((currentNodes) => (areFlowNodesEqual(currentNodes, nextNodes) ? currentNodes : nextNodes));
-  }, [nodeSyncKey, plugins, workflow, setNodes]);
+  }, [nodeSyncKey, plugins, setNodes]);
   useEffect(() => {
     if (!workflow) {
       return;
@@ -226,6 +229,12 @@ export function WorkflowCanvas() {
     },
     [setEdges, updateEdges],
   );
+  const onEdgeClick = useCallback(
+    (_event: MouseEvent, _edge: Edge) => {
+      setSelectedNodeId(null);
+    },
+    [setSelectedNodeId],
+  );
   const onNodeDragStop: OnNodeDrag = useCallback(
     (_event, node) => {
       const currentWorkflow = useBuilderStore.getState().workflow;
@@ -240,7 +249,7 @@ export function WorkflowCanvas() {
     [updateNodes],
   );
   const onSelectionChange = useCallback(
-    ({ nodes: selectedNodes }: { nodes: Node[] }) => {
+    ({ nodes: selectedNodes }: { nodes: Node[]; edges: Edge[] }) => {
       const nextSelectedNodeId = selectedNodes[0]?.id ?? null;
       if (useBuilderStore.getState().selectedNodeId === nextSelectedNodeId) {
         return;
@@ -252,12 +261,12 @@ export function WorkflowCanvas() {
   const onPaneClick = useCallback(() => {
     setSelectedNodeId(null);
   }, [setSelectedNodeId]);
-  const onDragOver = useCallback((event: React.DragEvent) => {
+  const onDragOver = useCallback((event: DragEvent) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = "move";
   }, []);
   const onDrop = useCallback(
-    (event: React.DragEvent) => {
+    (event: DragEvent) => {
       event.preventDefault();
       const type = event.dataTransfer.getData("application/reactflow");
       if (!type) {
@@ -287,6 +296,7 @@ export function WorkflowCanvas() {
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
+        onEdgeClick={onEdgeClick}
         onNodeDragStop={onNodeDragStop}
         onSelectionChange={onSelectionChange}
         onPaneClick={onPaneClick}
@@ -299,6 +309,10 @@ export function WorkflowCanvas() {
         connectionLineStyle={{ stroke: "var(--builder-edge)", strokeWidth: 2 }}
         connectionRadius={28}
         defaultEdgeOptions={defaultEdgeOptions}
+        elementsSelectable
+        edgesFocusable
+        elevateEdgesOnSelect
+        deleteKeyCode={["Backspace", "Delete"]}
         proOptions={{ hideAttribution: true }}
       >
         <Background gap={20} size={1.25} variant={BackgroundVariant.Dots} />

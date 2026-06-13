@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { AgentIntegrationsConfig, GmailAgentIntegrationConfig } from "@/src/core/workflow/types";
 import { DEFAULT_GMAIL_MONITORING_RULES } from "@/src/integrations/types";
@@ -39,9 +39,22 @@ export function AgentIntegrationsPanel({ integrations, onChange }: AgentIntegrat
   const [connections, setConnections] = useState<readonly IntegrationConnectionSummary[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const gmailConfig = integrations.gmail;
-  const gmailConnections = connections.filter(
-    (connection) => connection.provider === "gmail" && connection.status === "connected",
+  const gmailConnections = useMemo(
+    () =>
+      connections.filter(
+        (connection) => connection.provider === "gmail" && connection.status === "connected",
+      ),
+    [connections],
   );
+  const gmailConnectionSelectValue = useMemo(() => {
+    if (!gmailConfig || gmailConnections.length === 0) {
+      return null;
+    }
+    const matchedConnection = gmailConnections.find(
+      (connection) => connection.id === gmailConfig.connectionId,
+    );
+    return matchedConnection?.id ?? gmailConnections[0].id;
+  }, [gmailConfig, gmailConnections]);
   useEffect(() => {
     let isActive = true;
     async function loadConnections(): Promise<void> {
@@ -85,6 +98,9 @@ export function AgentIntegrationsPanel({ integrations, onChange }: AgentIntegrat
     const connectionId = gmailConnections[0]?.id ?? "";
     onChange({ ...integrations, gmail: buildDefaultGmailConfig(connectionId) });
   }
+  function handleGmailConnectionChange(value: string): void {
+    updateGmailConfig({ connectionId: value });
+  }
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
       <div>
@@ -115,22 +131,26 @@ export function AgentIntegrationsPanel({ integrations, onChange }: AgentIntegrat
             ) : (
               <>
                 <div className="space-y-2">
-                  <Label>Gmail account</Label>
-                  <Select
-                    value={gmailConfig.connectionId}
-                    onValueChange={(value) => value && updateGmailConfig({ connectionId: value })}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select account" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {gmailConnections.map((connection) => (
-                        <SelectItem key={connection.id} value={connection.id}>
-                          {connection.accountEmail ?? connection.id}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="agent-gmail-connection">Gmail account</Label>
+                  {gmailConnectionSelectValue ? (
+                    <Select
+                      value={gmailConnectionSelectValue}
+                      onValueChange={(value) => value && handleGmailConnectionChange(value)}
+                    >
+                      <SelectTrigger id="agent-gmail-connection" className="w-full">
+                        <SelectValue placeholder="Select account" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {gmailConnections.map((connection) => (
+                          <SelectItem key={connection.id} value={connection.id}>
+                            {connection.accountEmail ?? connection.id}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">Loading Gmail accounts…</p>
+                  )}
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div className="space-y-2">
@@ -170,24 +190,33 @@ export function AgentIntegrationsPanel({ integrations, onChange }: AgentIntegrat
                 <div className="flex flex-wrap gap-6">
                   <div className="flex items-center gap-2">
                     <Switch
+                      id="agent-gmail-unread-only"
                       checked={gmailConfig.monitoringRules.unreadOnly}
                       onCheckedChange={(checked) => updateMonitoringRules("unreadOnly", checked)}
                     />
-                    <Label className="font-normal">Unread only</Label>
+                    <Label htmlFor="agent-gmail-unread-only" className="font-normal">
+                      Unread only
+                    </Label>
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch
+                      id="agent-gmail-realtime"
                       checked={gmailConfig.monitoringRules.realtime}
                       onCheckedChange={(checked) => updateMonitoringRules("realtime", checked)}
                     />
-                    <Label className="font-normal">Real-time monitoring</Label>
+                    <Label htmlFor="agent-gmail-realtime" className="font-normal">
+                      Real-time monitoring
+                    </Label>
                   </div>
                   <div className="flex items-center gap-2">
                     <Switch
+                      id="agent-gmail-auto-reply"
                       checked={gmailConfig.autoReplyEnabled}
                       onCheckedChange={(checked) => updateGmailConfig({ autoReplyEnabled: checked })}
                     />
-                    <Label className="font-normal">Automatic replies</Label>
+                    <Label htmlFor="agent-gmail-auto-reply" className="font-normal">
+                      Automatic replies
+                    </Label>
                   </div>
                 </div>
                 <div className="space-y-2">

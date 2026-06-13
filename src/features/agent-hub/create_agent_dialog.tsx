@@ -50,6 +50,11 @@ export function CreateAgentDialog({ open, onOpenChange, onCreate, isCreating }: 
   const gmailConnections = connections.filter(
     (connection) => connection.provider === "gmail" && connection.status === "connected",
   );
+  const gmailConnectionSelectValue = gmailConnections.some(
+    (connection) => connection.id === gmailConnectionId,
+  )
+    ? gmailConnectionId
+    : null;
   useEffect(() => {
     if (!open) {
       return;
@@ -176,7 +181,7 @@ export function CreateAgentDialog({ open, onOpenChange, onCreate, isCreating }: 
                 <div className="space-y-2">
                   <Label>Connected Gmail account</Label>
                   <Select
-                    value={gmailConnectionId}
+                    value={gmailConnectionSelectValue}
                     onValueChange={(value) => value && setGmailConnectionId(value)}
                     disabled={isCreating || gmailConnections.length === 0}
                   >
