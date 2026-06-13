@@ -164,39 +164,6 @@ Open [http://localhost:3000](http://localhost:3000) to access the Agent Hub.
 Agent environments: `development`, `staging`, `production`.  
 Agent statuses: `draft`, `published`, `archived`.
 
-## API Routes
-
-| Method | Path | Description |
-| --- | --- | --- |
-| `GET` | `/api/workflows` | List all agents |
-| `POST` | `/api/workflows` | Create a new agent |
-| `GET` | `/api/workflows/:id` | Get agent by ID |
-| `PUT` | `/api/workflows/:id` | Update agent graph and metadata |
-| `DELETE` | `/api/workflows/:id` | Delete agent |
-| `GET` | `/api/runs` | List workflow runs |
-| `POST` | `/api/runs` | Execute a workflow |
-| `GET` | `/api/runs/:id` | Get run details |
-| `POST` | `/api/runs/:id/approve` | Approve a paused mutating step |
-| `GET` | `/api/nodes` | List registered node plugin definitions |
-| `GET` | `/api/integrations` | List integration connections |
-| `POST` | `/api/integrations` | Initiate OAuth or manage connections |
-| `GET` | `/api/integrations/catalog` | List available integration providers |
-| `GET` | `/api/integrations/activity` | Fetch integration activity logs |
-| `POST` | `/api/integrations/gmail` | Gmail-specific integration actions |
-| `GET` | `/api/integrations/oauth/gmail/callback` | Gmail OAuth callback handler |
-| `POST` | `/api/connectors` | Execute connector gateway requests |
-| `GET` | `/api/secrets` | List stored credentials |
-| `POST` | `/api/secrets` | Store a credential |
-| `GET` | `/api/audit` | Fetch audit trail entries |
-
-## Pages
-
-| Path | Description |
-| --- | --- |
-| `/` | Agent Hub — browse and create agents |
-| `/builder/:id` | Visual workflow editor for a specific agent |
-| `/integrations` | Connect and manage third-party integrations |
-
 ## Security Notes
 
 - OAuth access and refresh tokens are encrypted at rest using `INTEGRATION_TOKEN_SECRET`.
