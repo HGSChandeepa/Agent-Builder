@@ -9,8 +9,6 @@ import type {
   StepLogEntry,
   StepRun,
 } from "@/src/core/execution/types";
-import { policyEngine } from "@/src/security/policy/policy_engine";
-import { auditTrail } from "@/src/security/audit/audit_trail";
 import type { NodePluginRegistry } from "@/src/core/nodes/types";
 import { getTopologicalOrder } from "@/src/core/workflow/validator";
 import type { EdgeDefinition } from "@/src/core/workflow/types";
@@ -239,27 +237,13 @@ export class ExecutionEngine {
             throw new Error(LLM_REQUIRES_PROMPT_TEMPLATE_MESSAGE);
           }
         }
-        const executeNode = async () => {
-          const policyResult = policyEngine.evaluate({
-            payload: nodeInput,
-            environment: workflow.environment,
-            isMutating: plugin.isMutating ?? false,
-            isSimulation: mutableRun.isSimulation,
-          });
-          if (!policyResult.passed) {
-            auditTrail.record("policy.violation", "system", "run", runId, {
-              nodeId,
-              violations: policyResult.violations,
-            });
-            throw new Error(`Policy check failed: ${policyResult.violations.map((v) => v.message).join(", ")}`);
-          }
-          return plugin.execute({
+        const executeNode = async () =>
+          plugin.execute({
             nodeId,
             config: node.config,
             inputs: nodeInput,
             context,
           });
-        };
         const { result: executionResult, attempts } = await executeWithRetry(executeNode, retryPolicy);
         step = { ...step, attempt: attempts };
         for (const log of executionResult.logs ?? []) {

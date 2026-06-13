@@ -377,6 +377,12 @@ export function GmailNodeSection({ config, outputPathOptions, onConfigChange }: 
       isActive = false;
     };
   }, []);
+  useEffect(() => {
+    if (!getStringValue(config, "connectionId") && gmailConnections.length > 0) {
+      onConfigChange("connectionId", gmailConnections[0].id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [connections]);
   return (
     <div className="space-y-4">
       <div className="space-y-2">

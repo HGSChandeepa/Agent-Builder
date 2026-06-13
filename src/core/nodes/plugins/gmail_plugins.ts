@@ -102,7 +102,9 @@ async function executeSend(
   isSimulation: boolean,
 ) {
   const connectionId = String(config.connectionId ?? "");
-  const to = splitRecipients(resolveTemplate(String(config.to ?? ""), variables));
+  const toTemplate = String(config.to ?? "");
+  const resolvedTo = resolveTemplate(toTemplate, variables);
+  const to = splitRecipients(resolvedTo);
   const cc = splitRecipients(resolveTemplate(String(config.cc ?? ""), variables));
   const bcc = splitRecipients(resolveTemplate(String(config.bcc ?? ""), variables));
   const subject = resolveTemplate(String(config.subject ?? ""), variables) || "(no subject)";
@@ -130,10 +132,19 @@ async function executeSend(
       ],
     };
   }
-  if (!connectionId || to.length === 0) {
+  if (!connectionId) {
     return {
-      output: { error: "A Gmail account and at least one recipient are required" },
-      logs: [{ level: "error" as const, message: "Missing Gmail connection or recipients" }],
+      output: { error: "Select a Gmail account in the Gmail node configuration." },
+      logs: [{ level: "error" as const, message: "Gmail account not selected" }],
+    };
+  }
+  if (to.length === 0) {
+    const hint = toTemplate.includes("{{")
+      ? `The "To" reference ${JSON.stringify(toTemplate)} resolved to ${JSON.stringify(resolvedTo)}. Check that the referenced field exists in an upstream node's output.`
+      : 'Set a "To" recipient, or map it from a previous step (e.g. {{emails.0.from}}).';
+    return {
+      output: { error: `No recipients. ${hint}` },
+      logs: [{ level: "error" as const, message: `Gmail send has no recipients (to=${JSON.stringify(resolvedTo)})` }],
     };
   }
   const result = await sendGmailEmail(connectionId, getOrigin(), {

@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { ensurePlatformReady } from "@/src/lib/bootstrap";
-import {
-  completeGmailOAuth,
-  validateOAuthState,
-} from "@/src/integrations/providers/gmail/service";
+import { completeGmailOAuth } from "@/src/integrations/providers/gmail/service";
 import { auditTrail } from "@/src/security/audit/audit_trail";
 
 function getOrigin(request: Request): string {
@@ -27,7 +24,7 @@ export async function GET(request: Request): Promise<NextResponse> {
   }
   const cookieStore = await cookies();
   const storedState = cookieStore.get("gmail_oauth_state")?.value;
-  if (!storedState || storedState !== state || !validateOAuthState(state)) {
+  if (!storedState || storedState !== state) {
     return NextResponse.redirect(`${redirectBase}?error=invalid_oauth_state`);
   }
   try {

@@ -53,6 +53,7 @@ interface StructuredOutputField {
 
 interface StructuredOutputsSectionProps {
   readonly config: Record<string, unknown>;
+  readonly externalFieldNames: readonly string[];
   readonly onConfigChange: (key: string, value: unknown) => void;
 }
 
@@ -247,6 +248,87 @@ function ensureCurrentPromptPathOption(
     return [...options];
   }
   return [{ value: currentPath, label: `${currentPath} - current custom path` }, ...options];
+}
+
+function collectAncestorNodes(workflow: WorkflowDefinition, nodeId: string): NodeDefinition[] {
+  const nodeMap = new Map(workflow.nodes.map((node) => [node.id, node]));
+  const parentsByNode = new Map<string, string[]>();
+  for (const edge of workflow.edges) {
+    const parents = parentsByNode.get(edge.targetNodeId) ?? [];
+    parents.push(edge.sourceNodeId);
+    parentsByNode.set(edge.targetNodeId, parents);
+  }
+  const visited = new Set<string>();
+  const queue = [...(parentsByNode.get(nodeId) ?? [])];
+  const ancestors: NodeDefinition[] = [];
+  while (queue.length > 0) {
+    const currentId = queue.shift();
+    if (!currentId || visited.has(currentId)) {
+      continue;
+    }
+    visited.add(currentId);
+    const node = nodeMap.get(currentId);
+    if (node) {
+      ancestors.push(node);
+    }
+    for (const parentId of parentsByNode.get(currentId) ?? []) {
+      if (!visited.has(parentId)) {
+        queue.push(parentId);
+      }
+    }
+  }
+  return ancestors;
+}
+
+function getStructuredFieldPathOptions(
+  node: NodeDefinition,
+): readonly { readonly value: string; readonly label: string }[] {
+  if (node.type !== "LlmCall" || node.config.outputFormat !== "json") {
+    return [];
+  }
+  return getStructuredOutputFields(node.config.structuredFields)
+    .filter((field) => field.name.trim().length > 0)
+    .map((field) => ({
+      value: field.name.trim(),
+      label: `${field.name.trim()} (structured ${field.type})`,
+    }));
+}
+
+function getAncestorOutputPathOptions(
+  workflow: WorkflowDefinition,
+  selectedNodeId: string,
+): PromptInputPathOption[] {
+  const ancestors = collectAncestorNodes(workflow, selectedNodeId);
+  const optionsByPath = new Map<string, PromptInputPathOption>();
+  for (const node of ancestors) {
+    const pathOptions = [...getStructuredFieldPathOptions(node), ...getNodeOutputPathOptions(node)];
+    for (const option of pathOptions) {
+      if (optionsByPath.has(option.value)) {
+        continue;
+      }
+      optionsByPath.set(option.value, {
+        value: option.value,
+        label: `${option.label} — ${node.label} (${node.type})`,
+      });
+    }
+  }
+  return Array.from(optionsByPath.values());
+}
+
+function collectExternalStructuredFieldNames(
+  workflow: WorkflowDefinition,
+  selectedNodeId: string,
+): string[] {
+  const names: string[] = [];
+  for (const node of workflow.nodes) {
+    if (node.id === selectedNodeId || node.type !== "LlmCall" || node.config.outputFormat !== "json") {
+      continue;
+    }
+    for (const field of getStructuredOutputFields(node.config.structuredFields)) {
+      names.push(field.name);
+    }
+  }
+  return names;
 }
 
 async function testHttpRequest(config: Record<string, unknown>): Promise<HttpResponsePreview> {
@@ -513,9 +595,27 @@ function PromptTemplateSection({
   );
 }
 
-function StructuredOutputsSection({ config, onConfigChange }: StructuredOutputsSectionProps) {
+function StructuredOutputsSection({ config, externalFieldNames, onConfigChange }: StructuredOutputsSectionProps) {
   const outputFormat = getStructuredOutputFormat(config.outputFormat);
   const fields = getStructuredOutputFields(config.structuredFields);
+  const externalNameSet = new Set(externalFieldNames.map((name) => name.trim().toLowerCase()));
+  function getDuplicateReason(index: number): string | null {
+    const name = fields[index].name.trim().toLowerCase();
+    if (!name) {
+      return null;
+    }
+    const withinBlock = fields.some(
+      (field, fieldIndex) => fieldIndex !== index && field.name.trim().toLowerCase() === name,
+    );
+    if (withinBlock) {
+      return "Duplicate field name in this block";
+    }
+    if (externalNameSet.has(name)) {
+      return "Field name already used in another LLM block";
+    }
+    return null;
+  }
+  const hasDuplicates = fields.some((_, index) => getDuplicateReason(index) !== null);
   function handleFieldChange(index: number, updates: Partial<StructuredOutputField>): void {
     onConfigChange(
       "structuredFields",
@@ -556,6 +656,11 @@ function StructuredOutputsSection({ config, onConfigChange }: StructuredOutputsS
       </div>
       {outputFormat === "json" && (
         <div className="space-y-3">
+          {hasDuplicates && (
+            <p className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-[11px] text-destructive">
+              Structured output field names must be unique across all LLM blocks. Rename the highlighted fields.
+            </p>
+          )}
           {fields.length === 0 && (
             <p className="rounded-lg border border-dashed border-border px-3 py-2 text-xs text-muted-foreground">
               No fields yet. Add a field to describe the JSON object you expect from the LLM.
@@ -573,7 +678,12 @@ function StructuredOutputsSection({ config, onConfigChange }: StructuredOutputsS
                     value={field.name}
                     onChange={(event) => handleFieldChange(index, { name: event.target.value })}
                     placeholder="summary"
+                    aria-invalid={getDuplicateReason(index) !== null}
+                    className={getDuplicateReason(index) ? "border-destructive focus-visible:ring-destructive/30" : undefined}
                   />
+                  {getDuplicateReason(index) && (
+                    <p className="text-[11px] text-destructive">{getDuplicateReason(index)}</p>
+                  )}
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor={`structured-field-type-${index}`} className="text-xs">
@@ -660,7 +770,11 @@ export function PropertyPanel() {
       : [];
   const gmailOutputPathOptions =
     isGmailNodeType(selectedNode.type) && workflow
-      ? getPromptInputPathOptions(workflow, selectedNode.id)
+      ? getAncestorOutputPathOptions(workflow, selectedNode.id)
+      : [];
+  const externalStructuredFieldNames =
+    selectedNode.type === "LlmCall" && workflow
+      ? collectExternalStructuredFieldNames(workflow, selectedNode.id)
       : [];
   function handleConfigChange(key: string, value: unknown): void {
     updateNodeConfig(nodeId, { [key]: value });
@@ -782,7 +896,11 @@ export function PropertyPanel() {
           ))
         )}
         {selectedNode.type === "LlmCall" && (
-          <StructuredOutputsSection config={selectedNode.config} onConfigChange={handleConfigChange} />
+          <StructuredOutputsSection
+            config={selectedNode.config}
+            externalFieldNames={externalStructuredFieldNames}
+            onConfigChange={handleConfigChange}
+          />
         )}
         <div className="border-t pt-4">
           <Button variant="destructive" size="sm" onClick={() => removeNode(nodeId)}>

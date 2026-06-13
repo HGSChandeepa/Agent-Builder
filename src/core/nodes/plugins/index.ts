@@ -380,6 +380,7 @@ export const llmCallPlugin: NodePlugin = {
         : `[Simulated ${model}] Response to: ${userPrompt.slice(0, 100)}...`;
       return {
         output: {
+          ...(structuredOutput ?? {}),
           response,
           structuredOutput,
           outputFormat,
@@ -411,6 +412,7 @@ export const llmCallPlugin: NodePlugin = {
     const totalTokens = chatCompletion.usage?.total_tokens ?? 0;
     return {
       output: {
+        ...(structuredOutput ?? {}),
         response,
         structuredOutput,
         outputFormat,

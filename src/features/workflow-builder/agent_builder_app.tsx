@@ -19,6 +19,7 @@ import {
   fetchRuns,
 } from "@/src/features/workflow-builder/builder_store";
 import { AgentIntegrationsPanel } from "@/src/features/workflow-builder/agent_integrations_panel";
+import { SlateToast } from "@/src/features/shared/slate_toast";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -45,6 +46,7 @@ export function AgentBuilderApp({ workflowId }: AgentBuilderAppProps) {
   const [activeTab, setActiveTab] = useState<BuilderViewTab>("editor");
   const [runInput, setRunInput] = useState<string>('{"message": "Help me reset my password"}');
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [saveNotice, setSaveNotice] = useState<string | null>(null);
   const workflowIntegrations = useMemo(
     () => workflow?.integrations ?? {},
     [workflow?.integrations],
@@ -75,6 +77,13 @@ export function AgentBuilderApp({ workflowId }: AgentBuilderAppProps) {
     }
     load();
   }, [workflowId, setWorkflow, setPlugins, setSelectedNodeId, setActiveRun, setRuns, setValidationIssues]);
+  useEffect(() => {
+    if (!saveNotice) {
+      return;
+    }
+    const timer = window.setTimeout(() => setSaveNotice(null), 3000);
+    return () => window.clearTimeout(timer);
+  }, [saveNotice]);
   const handleSave = useCallback(async (): Promise<void> => {
     if (!workflow) {
       return;
@@ -84,6 +93,7 @@ export function AgentBuilderApp({ workflowId }: AgentBuilderAppProps) {
       const { workflow: saved, validation } = await saveWorkflow(workflow);
       setWorkflow(saved);
       setValidationIssues(validation.issues);
+      setSaveNotice("Changes saved");
     } finally {
       setIsSaving(false);
     }
@@ -100,6 +110,7 @@ export function AgentBuilderApp({ workflowId }: AgentBuilderAppProps) {
       });
       setWorkflow(saved);
       setValidationIssues(validation.issues);
+      setSaveNotice("Agent published");
     } finally {
       setIsSaving(false);
     }
@@ -217,6 +228,7 @@ export function AgentBuilderApp({ workflowId }: AgentBuilderAppProps) {
           />
         </div>
       </div>
+      <SlateToast message={saveNotice} />
     </div>
   );
 }

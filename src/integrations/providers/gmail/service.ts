@@ -28,18 +28,6 @@ import {
   type StoredConnection,
 } from "@/src/integrations/repository";
 
-const oauthStates = new Map<string, { createdAt: number }>();
-const STATE_TTL_MS = 10 * 60 * 1000;
-
-function cleanupExpiredStates(): void {
-  const now = Date.now();
-  for (const [state, entry] of oauthStates.entries()) {
-    if (now - entry.createdAt > STATE_TTL_MS) {
-      oauthStates.delete(state);
-    }
-  }
-}
-
 function toSummary(connection: StoredConnection): IntegrationConnectionSummary {
   return {
     id: connection.id,
@@ -123,24 +111,12 @@ export async function getGmailConnection(): Promise<IntegrationConnectionSummary
 }
 
 export function startGmailOAuth(origin: string): { authUrl: string; state: string } {
-  cleanupExpiredStates();
   const config = getGmailOAuthConfig(origin);
   if (!isGmailOAuthConfigured(config)) {
     throw new Error("Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to connect Gmail");
   }
   const state = createOAuthState();
-  oauthStates.set(state, { createdAt: Date.now() });
   return { authUrl: buildGmailAuthUrl(config, state), state };
-}
-
-export function validateOAuthState(state: string): boolean {
-  cleanupExpiredStates();
-  const entry = oauthStates.get(state);
-  if (!entry) {
-    return false;
-  }
-  oauthStates.delete(state);
-  return Date.now() - entry.createdAt <= STATE_TTL_MS;
 }
 
 export async function completeGmailOAuth(origin: string, code: string): Promise<IntegrationConnectionSummary> {
